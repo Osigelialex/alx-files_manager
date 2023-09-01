@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import mongodb from 'mongodb';
 
 class DBClient {
   constructor() {
@@ -8,7 +8,7 @@ class DBClient {
     const url = `mongodb://${host}:${port}`;
 
     this.alive = false;
-    MongoClient.connect(url, { useUnifiedTopology: true }, (err, client) => {
+    mongodb.MongoClient.connect(url, { useUnifiedTopology: true }, (err, client) => {
       if (!err) {
         // console.log("Connected successfully to server");
         this.db = client.db(database);
