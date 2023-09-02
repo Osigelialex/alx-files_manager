@@ -53,7 +53,8 @@ const AuthController = {
     // generate token for user
     const token = uuidv4();
     const duration = 3600 * 24;
-    await redisClient.set(token, user._id.toString(), duration);
+    const key = `auth_${token}`;
+    await redisClient.set(key, user._id.toString(), duration);
     res.status(200).json({ token });
   },
 
@@ -65,15 +66,18 @@ const AuthController = {
       return;
     }
 
+    // construct key from token
+    const key = `auth_${token}`;
+
     // retrieve user based on token
-    const userId = await redisClient.get(token);
+    const userId = await redisClient.get(key);
 
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    redisClient.del(token);
+    redisClient.del(key);
     res.status(204).send();
   },
 };
