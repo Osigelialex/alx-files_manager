@@ -41,7 +41,7 @@ const UsersController = {
    const objectId = new ObjectId(userId);
    const user = await dbClient.userCollection.findOne({ _id: ObjectId });
    console.log(user);   
-   res.status(200).json({ "_id": userId, "email": user.email });
+   res.status(200).json({ "id": userId, "email": user.email });
    return
   }
 };

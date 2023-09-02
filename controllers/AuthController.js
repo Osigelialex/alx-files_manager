@@ -39,8 +39,16 @@ const AuthController = {
       return;
     }
 
+    // retrieve user based on token
+    const userId = await redisClient.get(token);
+    
+    if (!userId) {
+      res.status(401).json({ "error": "Unauthorized" });
+      return;
+    }
+
     redisClient.del(token);
-    res.send();
+    res.status(201).send();
   }
 }
 
