@@ -22,8 +22,16 @@ const AuthController = {
     try {
       const base64String = authorizationHeader.split(' ')[1];
       const userDetails = Buffer.from(base64String, 'base64').toString();
-      const components = userDetails.split(':');
-      [email, password] = components;
+
+      // check for semicolon separator
+      const semiColonIndex = userDetails.indexOf(':');
+      if (semiColonIndex === -1) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      email = userDetails.slice(0, semiColonIndex);
+      password = userDetails.slice(semiColonIndex + 1);
       encodedPassword = sha1(password);
     } catch (err) {
       res.status(401).json({ error: 'Unauthorized' });
