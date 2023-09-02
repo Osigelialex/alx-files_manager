@@ -39,7 +39,7 @@ const UsersController = {
 
     // search mongo for user with object id
     const user = await dbClient.userCollection.findOne({ _id: new ObjectId(userId) });
-    res.status(200).json({ id: userId, email: user.email });
+    res.json({ id: userId, email: user.email });
   },
 };
 

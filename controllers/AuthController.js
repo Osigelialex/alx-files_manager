@@ -19,8 +19,12 @@ const AuthController = {
     // find user associated with username and Password
     const user = await dbClient.userCollection.findOne({ email });
 
+    if (!user) {
+      res.status(401).json({ "error": "Unauthorized" })
+    }
+
     if (user.password !== encodedPassword) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ "error": "Unauthorized" });
       return;
     }
 
@@ -48,7 +52,7 @@ const AuthController = {
     }
 
     redisClient.del(token);
-    res.status(201).send();
+    res.status(204).send();
   },
 };
 
