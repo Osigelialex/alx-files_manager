@@ -8,6 +8,12 @@ const AuthController = {
     // get Basic Auth details from user
     const authorizationHeader = req.headers.authorization;
 
+    // check if authentication header does not exist
+    if (!authorizationHeader) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     // extracting username and email from base64 header
     const base64String = authorizationHeader.split(' ')[1];
     const userDetails = Buffer.from(base64String, 'base64').toString();
@@ -20,11 +26,12 @@ const AuthController = {
     const user = await dbClient.userCollection.findOne({ email });
 
     if (!user) {
-      res.status(401).json({ "error": "Unauthorized" })
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     if (user.password !== encodedPassword) {
-      res.status(401).json({ "error": "Unauthorized" });
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
