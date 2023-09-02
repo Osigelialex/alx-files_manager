@@ -15,18 +15,18 @@ const AuthController = {
     }
 
     // variables to store auth info
-    let email, password, encodedPassword;
+    let email; let password; let
+      encodedPassword;
 
     // extracting username and email from base64 header
     try {
       const base64String = authorizationHeader.split(' ')[1];
       const userDetails = Buffer.from(base64String, 'base64').toString();
       const components = userDetails.split(':');
-      email = components[0];
-      password = components[1];
+      [email, password] = components;
       encodedPassword = sha1(password);
-    } catch(err) { 
-      res.status(401).json({ error: "Unauthorized" });
+    } catch (err) {
+      res.status(401).json({ error: 'Unauthorized' });
     }
 
     // find user associated with username and Password
