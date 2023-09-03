@@ -22,8 +22,16 @@ const AuthController = {
     try {
       const base64String = authorizationHeader.split(' ')[1];
       const userDetails = Buffer.from(base64String, 'base64').toString();
-      const components = userDetails.split(':');
-      [email, password] = components;
+
+      // check for semicolon separator
+      const semiColonIndex = userDetails.indexOf(':');
+      if (semiColonIndex === -1) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      email = userDetails.slice(0, semiColonIndex);
+      password = userDetails.slice(semiColonIndex + 1);
       encodedPassword = sha1(password);
     } catch (err) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -44,7 +52,8 @@ const AuthController = {
     // generate token for user
     const token = uuidv4();
     const duration = 3600 * 24;
-    await redisClient.set(token, user._id.toString(), duration);
+    const key = `auth_${token}`;
+    await redisClient.set(key, user._id.toString(), duration);
     res.status(200).json({ token });
   },
 
@@ -56,15 +65,18 @@ const AuthController = {
       return;
     }
 
+    // construct key from token
+    const key = `auth_${token}`;
+
     // retrieve user based on token
-    const userId = await redisClient.get(token);
+    const userId = await redisClient.get(key);
 
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    redisClient.del(token);
+    redisClient.del(key);
     res.status(204).send();
   },
 };
