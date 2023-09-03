@@ -1,28 +1,36 @@
-import redisClient from "../utils/redis";
-import dbClient from "../utils/db";
+import { ObjectId } from 'mongodb';
+import { v4 as uuidv4 } from 'uuid';
+import { mkdir, writeFile } from 'fs';
+import { promisify } from 'util';
+import { join } from 'path';
+import dbClient from '../utils/db';
+import redisClient from '../utils/redis';
+
+const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
+const mkdirAsync = promisify(mkdir);
+const writeFileAsync = promisify(writeFile);
 
 const FilesController = {
   postUpload: async (req, res) => {
-    const token = req.headers['X-TOKEN'];
-
+    const token = req.headers['x-token'];
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-
-    const userId = await redisClient.get(token);
+    const userId = await redisClient.get(`auth_${token}`);
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
     // extract data from request
-    const name = req.body['name'];
-    const type = req.body['type'];
-    const parentId = req.body['parentId'] || 0;
-    const isPublic = req.body['isPublic'] || false;
-    
+    const { name } = req.body;
+    const { type } = req.body;
+    const parentId = req.body.parentId || 0;
+    const isPublic = req.body.isPublic || false;
+    let data = null;
+
     if (type === 'file' || type === 'image') {
-      const data = req.body['data'];
+      data = req.body.data;
     }
     const acceptedTypes = ['folder', 'file', 'image'];
     if (!name) {
@@ -34,9 +42,9 @@ const FilesController = {
     if (!data && type !== 'folder') {
       return res.status(400).json({ error: 'Missing data' });
     }
-    
+
     if (parentId !== 0) {
-      file = dbClient.fileCollection.find({ parentId });
+      const file = await dbClient.fileCollection.findOne({ _id: new ObjectId(parentId) });
       if (!file) {
         return res.status(400).json({ error: 'Parent not found' });
       }
@@ -46,13 +54,35 @@ const FilesController = {
     }
 
     const document = {
-      userId,
+      userId: new ObjectId(userId),
       name,
       type,
       isPublic,
       parentId,
     };
 
+    if (type !== 'folder') {
+      await mkdirAsync(FOLDER_PATH, { recursive: true })
+        .catch((err) => console.error(err));
+
+      const path = join(FOLDER_PATH, uuidv4());
+
+      await writeFileAsync(path, Buffer.from(data, 'base64'))
+        .catch((err) => console.error(err));
+
+      document.localPath = path;
+    }
+    const insertedFIle = await dbClient.fileCollection.insertOne(document);
+    return res.status(201).json(
+      {
+        id: insertedFIle.insertedId,
+        userId,
+        name,
+        type,
+        isPublic,
+        parentId,
+      },
+    );
   },
 };
 
