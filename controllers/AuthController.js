@@ -28,7 +28,6 @@ const AuthController = {
     } catch (err) {
       res.status(401).json({ error: 'Unauthorized' });
     }
-
     // find user associated with username and Password
     const user = await dbClient.userCollection.findOne({ email });
 

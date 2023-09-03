@@ -49,8 +49,8 @@ const FilesController = {
       userId,
       name,
       type,
-      parentId,
       isPublic,
+      parentId,
     };
 
   },
