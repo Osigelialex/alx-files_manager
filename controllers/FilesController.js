@@ -96,7 +96,7 @@ const FilesController = {
 
     const { id } = req.params;
 
-    const file = await dbClient.fileCollection.findOne({ _id: new ObjectId(id), userId });
+    const file = await dbClient.fileCollection.findOne({ _id: new ObjectId(id) });
 
     if (!file) return res.status(404).json({ error: 'Not found' });
 
@@ -109,7 +109,6 @@ const FilesController = {
     if (!authToken) return res.status(401).json({ error: 'Unauthorized' });
 
     const userId = await redisClient.get(`auth_${authToken}`);
-    console.log(userId);
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
