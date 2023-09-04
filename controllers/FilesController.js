@@ -111,6 +111,7 @@ const FilesController = {
       name: file.name,
       type: file.type,
       isPublic: file.isPublic,
+      parentId: file.parentId,
     }).status(200);
   },
 
