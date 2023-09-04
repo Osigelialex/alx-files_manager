@@ -90,17 +90,28 @@ const FilesController = {
 
     if (!authToken) return res.status(401).json({ error: 'Unauthorized' });
 
-    const userId = redisClient.get(`auth_${authToken}`);
+    const userId = await redisClient.get(`auth_${authToken}`);
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { id } = req.params;
 
-    const file = await dbClient.fileCollection.findOne({ _id: new ObjectId(id) });
+    const query = {
+      _id: new ObjectId(id),
+      userId: new ObjectId(userId),
+    };
+
+    const file = await dbClient.fileCollection.findOne(query);
 
     if (!file) return res.status(404).json({ error: 'Not found' });
 
-    return res.json(file);
+    return res.json({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+    }).status(200);
   },
 
   getIndex: async (req, res) => {
@@ -117,7 +128,23 @@ const FilesController = {
     const pageSize = 20;
     const pageSkip = page * pageSize;
 
-    const pipeLine = [{ $match: { parentId } }, { $limit: pageSize }, { $skip: pageSkip }];
+    const pipeLine = [
+      { $match: { userId: new ObjectId(userId), parentId } },
+      { $limit: pageSize },
+      { $skip: pageSkip },
+      {
+        $project: {
+          _id: 0,
+          id: '$_id',
+          userId: '$userId',
+          name: '$name',
+          type: '$type',
+          isPublic: '$isPublic',
+          parentId: '$parentId',
+        },
+      },
+    ];
+
     const result = await dbClient.fileCollection.aggregate(pipeLine).toArray();
     return res.json(result);
   },
