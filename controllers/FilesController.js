@@ -128,8 +128,18 @@ const FilesController = {
     const pageSize = 20;
     const pageSkip = page * pageSize;
 
+    let matchQuery;
+
+    // if parent id is specified get all user files with parent id
+    // otherwise get all user files
+    if (!parentId) {
+      matchQuery = { userId: new ObjectId(userId) };
+    } else {
+      matchQuery = { userId: new ObjectId(userId), parentId };
+    }
+
     const pipeLine = [
-      { $match: { userId: new ObjectId(userId), parentId } },
+      { $match: matchQuery },
       { $limit: pageSize },
       { $skip: pageSkip },
       {
