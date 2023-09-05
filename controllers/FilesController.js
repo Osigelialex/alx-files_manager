@@ -233,37 +233,54 @@ const FilesController = {
   },
 
   getFile: async (req, res) => {
-    const token = req.headers['x-token'];
     const { id } = req.params;
 
     // get file by id
     const file = await dbClient.fileCollection.findOne({ _id: new ObjectId(id) });
 
     if (!file) {
-      return res.status(404).json({ error: 'Not Found' });
+      return res.status(404).json({ error: 'Not found' });
     }
 
-    if (!file.isPublic && !token) {
-      return res.status(404).json({ error: 'Not Found' });
+    if (!file.isPublic) {
+      // retrieve token
+      const token = req.headers['x-token'];
+
+      if (!token) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      const userId = await redisClient.get(`auth_${token}`);
+
+      if (!userId) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      const userIdObject = new ObjectId(userId);
+
+      // confirm if user is owner of file
+      if (!file.userId.equals(userIdObject)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
     }
 
     if (file.type === 'folder') {
-      return res.status(400).json({ error: "'A folder doesn't have content" });
+      return res.status(400).json({ error: "A folder doesn't have content" });
     }
 
     if (!file.localPath) {
-      return res.status(404).json({ error: 'Not Found' });
+      return res.status(404).json({ error: 'Not found' });
     }
 
     // get MIME-type based on name of file.
     const mimeType = lookup(file.name);
+
     if (mimeType) {
-      const readfileAsync = promisify(readFile);
       // read file
-      const fileContent = await readfileAsync(file.localPath);
+      const fileContent = await readFileAsync(file.localPath);
 
       // set content header
-      res.setHeader("Content-Type", contentType(file.name));
+      res.setHeader('Content-Type', contentType(file.name));
 
       return res.status(200).send(fileContent);
     }
