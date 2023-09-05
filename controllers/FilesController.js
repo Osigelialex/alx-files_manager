@@ -233,14 +233,6 @@ const FilesController = {
 
   getFile: async (req, res) => {
     const token = req.headers['x-token'];
-    // if (!token) {
-    //   return res.status(401).json({ error: 'Not Found' });
-    // }
-
-    // const userId = await redisClient.get(`auth_${token}`);
-    // if (!userId) {
-    //   return res.status(401).json({ error: 'Not Found' });
-    // }
     const { id } = req.params;
 
     // get file by id
