@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { mkdir, writeFile, readFile } from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
-import { lookup, contentType } from 'mime-types';
+import { contentType } from 'mime-types';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
@@ -242,7 +242,7 @@ const FilesController = {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    if (!file.isPublic && file.type === 'file') {
+    if (!file.isPublic) {
       // retrieve token
       const token = req.headers['x-token'];
 
@@ -256,10 +256,8 @@ const FilesController = {
         return res.status(404).json({ error: 'Not found' });
       }
 
-      const userIdObject = new ObjectId(userId);
-
       // confirm if user is owner of file
-      if (!file.userId.equals(userIdObject)) {
+      if (file.userId.toString() !== userId) {
         return res.status(404).json({ error: 'Not found' });
       }
     }
@@ -268,23 +266,13 @@ const FilesController = {
       return res.status(400).json({ error: "A folder doesn't have content" });
     }
 
-    if (!file.localPath) {
+    try {
+      const fileContent = await readFileAsync(file.localPath);
+      res.setHeader('Content-Type', contentType(file.name));
+      return res.status(200).send(fileContent);
+    } catch (err) {
       return res.status(404).json({ error: 'Not found' });
     }
-
-    // get MIME-type based on name of file.
-    const mimeType = lookup(file.name);
-
-    if (mimeType) {
-      // read file
-      const fileContent = await readFileAsync(file.localPath);
-
-      // set content header
-      res.setHeader('Content-Type', contentType(file.name));
-
-      return res.status(200).send(fileContent);
-    }
-    return res.status(404).json({ error: 'Not found' });
   },
 };
 
