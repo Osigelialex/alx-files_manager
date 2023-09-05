@@ -1,8 +1,9 @@
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
-import { mkdir, writeFile } from 'fs';
+import { mkdir, writeFile, readFile } from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
+import { lookup } from 'mime-types';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
@@ -182,6 +183,8 @@ const FilesController = {
       return res.status(404).json({ error: 'Not found' });
     }
 
+    await dbClient.fileCollection.updateOne({ _id: new ObjectId(id) },
+      { $set: { isPublic: true } });
     file.isPublic = true;
     return res.status(200).json({
       id: file._id,
@@ -215,6 +218,8 @@ const FilesController = {
       return res.status(404).json({ error: 'Not found' });
     }
 
+    await dbClient.fileCollection.updateOne({ _id: new ObjectId(id) },
+      { $set: { isPublic: false } });
     file.isPublic = false;
     return res.status(200).json({
       id: file._id,
@@ -224,6 +229,49 @@ const FilesController = {
       isPublic: file.isPublic,
       parentId: file.parentId,
     });
+  },
+
+  getFile: async (req, res) => {
+    const token = req.headers['x-token'];
+    // if (!token) {
+    //   return res.status(401).json({ error: 'Not Found' });
+    // }
+
+    // const userId = await redisClient.get(`auth_${token}`);
+    // if (!userId) {
+    //   return res.status(401).json({ error: 'Not Found' });
+    // }
+    const { id } = req.params;
+
+    // get file by id
+    const file = await dbClient.fileCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!file) {
+      return res.status(404).json({ error: 'Not Found' });
+    }
+
+    if (!file.isPublic && !token) {
+      return res.status(404).json({ error: 'Not Found' });
+    }
+
+    if (file.type === 'folder') {
+      return res.status(400).json({ error: "'A folder doesn't have content" });
+    }
+
+    if (!file.localPath) {
+      return res.status(404).json({ error: 'Not Found' });
+    }
+
+    // get MIME-type based on name of file.
+    const mimeType = lookup(file.name);
+    if (mimeType) {
+      const readfileAsync = promisify(readFile);
+      // read file
+      const fileContent = await readfileAsync(file.localPath);
+
+      return res.status(200).send(fileContent);
+    }
+    return res.status(404);
   },
 };
 
