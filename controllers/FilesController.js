@@ -242,7 +242,7 @@ const FilesController = {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    if (!file.isPublic) {
+    if (!file.isPublic && file.type === 'file') {
       // retrieve token
       const token = req.headers['x-token'];
 
@@ -284,7 +284,7 @@ const FilesController = {
 
       return res.status(200).send(fileContent);
     }
-    return res.status(404);
+    return res.status(404).json({ error: 'Not found' });
   },
 };
 
