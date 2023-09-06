@@ -4,12 +4,13 @@ import { mkdir, writeFile, readFile } from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
 import { contentType } from 'mime-types';
+import Queue from 'bull';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
 const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
 const mkdirAsync = promisify(mkdir);
-const writeFileAsync = promisify(writeFile);
+export const writeFileAsync = promisify(writeFile);
 const readFileAsync = promisify(readFile);
 
 const FilesController = {
@@ -63,6 +64,9 @@ const FilesController = {
       parentId,
     };
 
+    // create Bull queue.
+    const fileQueue = new Queue('fileQueue');
+
     if (type !== 'folder') {
       await mkdirAsync(FOLDER_PATH, { recursive: true })
         .catch((err) => console.error(err));
@@ -75,6 +79,13 @@ const FilesController = {
       document.localPath = path;
     }
     const insertedFIle = await dbClient.fileCollection.insertOne(document);
+
+    // add a job to queue
+    const job = await fileQueue.add({
+      userId,
+      fileId: insertedFIle.insertedId.toString(),
+    });
+    // console.log(job.data);
     return res.status(201).json(
       {
         id: insertedFIle.insertedId,
@@ -234,7 +245,7 @@ const FilesController = {
 
   getFile: async (req, res) => {
     const { id } = req.params;
-
+    const { size } = req.query;
     // get file by id
     const file = await dbClient.fileCollection.findOne({ _id: new ObjectId(id) });
 
@@ -266,8 +277,16 @@ const FilesController = {
       return res.status(400).json({ error: "A folder doesn't have content" });
     }
 
+    let path = null;
+
+    if (size) {
+      path = `${file.localPath}_${size}`;
+    } else {
+      path = file.localPath;
+    }
+
     try {
-      const fileContent = await readFileAsync(file.localPath);
+      const fileContent = await readFileAsync(path);
       res.setHeader('Content-Type', contentType(file.name));
       return res.status(200).send(fileContent);
     } catch (err) {
